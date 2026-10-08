@@ -169,6 +169,16 @@ purpose. These are **exploratory arms**. If a latent-dynamics arm beats the
 joint model or the FT-Transformer, the result needs a pre-registered protocol
 and an external cohort before it is worth claiming.
 
+## Reference run
+
+See [`results/reference_run_seed20261008/RESULTS.md`](results/reference_run_seed20261008/RESULTS.md).
+Headline: **no arm significantly beats LOCF + logistic regression.** mTAN is
+nominally best (AUC 0.7712 vs floor 0.7536) but the paired DeLong gives
+Δ = +0.018, p = 0.167 at 196 validation events, and the floor is markedly better
+calibrated (Brier 0.184 vs 0.199–0.227). Reversible pretraining came out
+**worst of its three modes**. Component 3 (FNO on waveforms) is the one clean
+positive: relative L2 0.1995 against a persistence baseline of ~0.45.
+
 ---
 
 ## Layout

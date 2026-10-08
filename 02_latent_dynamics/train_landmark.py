@@ -27,6 +27,7 @@ for _p in (_HERE, _ROOT):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
+from common.baselines import locf_logistic
 from common.metrics import evaluate_all, net_benefit
 from common.pipeline import add_common_args, build_cohort
 from models import MODEL_REGISTRY, build_model
@@ -145,31 +146,18 @@ def locf_baseline(co, args) -> dict:
     """Last-observation-carried-forward + logistic regression (the floor).
 
     Any temporal model that cannot beat LOCF+LR on 783 events is not earning
-    its parameters, and reviewers will ask for exactly this comparison.
+    its parameters, and reviewers will ask for exactly this comparison. Saved
+    to its own `_metrics.csv` / `_pred.csv` so `summarize.py` picks it up and
+    `compare_arms.py` can run a paired DeLong against it.
     """
-    from sklearn.linear_model import LogisticRegression
-    from sklearn.preprocessing import StandardScaler
-
-    v, m = co.batch.values.copy(), co.batch.mask.copy()
-    N, T, D = v.shape
-    locf = np.zeros((N, D), dtype=np.float32)
-    for i in range(N):
-        L = int(co.batch.lengths[i])
-        if L == 0:
-            continue
-        for d in range(D):
-            obs = np.where(m[i, :L, d] > 0)[0]
-            locf[i, d] = v[i, obs[-1], d] if obs.size else 0.0
-    X = np.column_stack([locf, co.batch.static if co.batch.static is not None
-                         else np.zeros((N, 0))])
-
-    Xtr, ytr = X[co.tr], co.y[co.tr]
-    Xva, yva = X[co.va], co.y[co.va]
-    sc = StandardScaler().fit(Xtr)
-    clf = LogisticRegression(max_iter=2000, C=1.0).fit(sc.transform(Xtr), ytr)
-    p = clf.predict_proba(sc.transform(Xva))[:, 1]
+    ids, yva, p = locf_logistic(co, seed=args.seed)
     out = evaluate_all(yva, p)
     out["model"] = "LOCF+LR (floor)"
+    pd.DataFrame({"id": ids, "y": yva, "p": p}).to_csv(
+        os.path.join(args.out_dir, "locf_lr_pred.csv"), index=False)
+    pd.DataFrame([{**out, "model": "LOCF+LR (floor)", "n_valid": len(yva),
+                   "landmark": args.landmark, "markers": ",".join(co.markers)}]
+                 ).to_csv(os.path.join(args.out_dir, "locf_lr_metrics.csv"), index=False)
     return out
 
 

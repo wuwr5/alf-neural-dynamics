@@ -17,6 +17,7 @@ as a twelfth arm has to be scored the same way or the comparison is meaningless.
 
 from __future__ import annotations
 
+import math
 from typing import Dict, Sequence
 
 import numpy as np
@@ -60,6 +61,57 @@ def auc_delong(y_true: Sequence, y_score: Sequence) -> Dict[str, float]:
     se = float(np.sqrt(max(s10 / m + s01 / k, 0.0)))
     return {"auc": auc, "se": se,
             "ci_low": float(auc - 1.96 * se), "ci_high": float(auc + 1.96 * se)}
+
+
+def _placement(y: np.ndarray, p: np.ndarray):
+    """V10 (positives) and V01 (negatives) placement values; ties count 0.5."""
+    x = p[y == 1]
+    z = p[y == 0]
+    m, k = len(x), len(z)
+    zs, xs = np.sort(z), np.sort(x)
+    zl = np.searchsorted(zs, x, side="left")
+    zr = np.searchsorted(zs, x, side="right")
+    V10 = (zl + 0.5 * (zr - zl)) / k
+    xl = np.searchsorted(xs, z, side="left")
+    xr = np.searchsorted(xs, z, side="right")
+    V01 = ((m - xr) + 0.5 * (xr - xl)) / m
+    return V10, V01
+
+
+def auc_delong_paired(y_true, score_a, score_b) -> Dict[str, float]:
+    """DeLong test for two correlated AUCs on the *same* patients.
+
+    Two AUCs computed on one validation set are strongly correlated, so
+    comparing their confidence intervals is wrong -- you need the covariance
+    between the placement values. This returns the difference, its SE, and a
+    two-sided p-value.
+    """
+    y = np.asarray(y_true, dtype=int)
+    pa = np.asarray(score_a, dtype=float)
+    pb = np.asarray(score_b, dtype=float)
+    keep = np.isfinite(pa) & np.isfinite(pb)
+    y, pa, pb = y[keep], pa[keep], pb[keep]
+
+    m = int((y == 1).sum())
+    k = int((y == 0).sum())
+    if m == 0 or k == 0:
+        return {key: float("nan") for key in
+                ("auc_a", "auc_b", "diff", "se_diff", "z", "p_value")}
+
+    V10a, V01a = _placement(y, pa)
+    V10b, V01b = _placement(y, pb)
+    auc_a, auc_b = float(V10a.mean()), float(V10b.mean())
+
+    S10 = np.cov(np.vstack([V10a, V10b]), ddof=1) if m > 1 else np.zeros((2, 2))
+    S01 = np.cov(np.vstack([V01a, V01b]), ddof=1) if k > 1 else np.zeros((2, 2))
+    var = ((S10[0, 0] + S10[1, 1] - 2 * S10[0, 1]) / m
+           + (S01[0, 0] + S01[1, 1] - 2 * S01[0, 1]) / k)
+    se = float(np.sqrt(max(var, 0.0)))
+    diff = auc_a - auc_b
+    z = diff / se if se > 1e-12 else 0.0
+    p = 2.0 * (1.0 - 0.5 * (1.0 + math.erf(abs(z) / math.sqrt(2)))) if se > 1e-12 else 1.0
+    return {"auc_a": auc_a, "auc_b": auc_b, "diff": float(diff),
+            "se_diff": se, "z": float(z), "p_value": float(p)}
 
 
 def brier_score(y_true: Sequence, y_score: Sequence) -> float:

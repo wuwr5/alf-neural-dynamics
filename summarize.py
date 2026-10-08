@@ -34,7 +34,10 @@ def main() -> None:
 
     clinical, spectral = [], []
     for fn in sorted(os.listdir(args.out_dir)):
-        if not fn.endswith("_metrics.csv"):
+        # *_metrics.csv = one row per arm.  *comparison.csv = the multi-row
+        # table component 2 writes; both are ingested so the LOCF floor, which
+        # historically lived only in the comparison file, never gets dropped.
+        if not (fn.endswith("_metrics.csv") or fn.endswith("comparison.csv")):
             continue
         path = os.path.join(args.out_dir, fn)
         try:
@@ -59,7 +62,7 @@ def main() -> None:
         cols = ["arm", "auc", "ci_low", "ci_high", "brier",
                 "calib_slope", "calib_intercept", "ici"]
         cols = [c for c in cols if c in clin.columns]
-        clin = clin[cols].sort_values("auc", ascending=False)
+        clin = clin[cols].drop_duplicates(subset=["arm"]).sort_values("auc", ascending=False)
         print("\n=== clinical arms, Day-2 landmark (validation) ===")
         print(clin.to_string(index=False, float_format=lambda x: f"{x:.4f}"))
     else:
