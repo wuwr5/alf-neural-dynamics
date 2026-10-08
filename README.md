@@ -107,6 +107,21 @@ python 02_latent_dynamics/train_landmark.py --model all --epochs 120
 python 03_spectral_waveform/train_surrogate.py --epochs 60 --rollout 4 --plot
 ```
 
+### Full run (all three components, one seed)
+
+```bash
+bash run_full.sh            # everything -> outputs/full, log -> outputs/full/full_run.log
+python summarize.py --out-dir outputs/full
+```
+
+`run_full.sh` runs component 1 in **three modes** (pretrained / from-scratch
+control / frozen-encoder probe), component 2 with all three latent-dynamics arms
+plus the LOCF floor, and component 3 with a 4-horizon rollout, then calls
+`summarize.py` to merge everything into `outputs/full/full_summary.csv`.
+
+It uses **one seed**. For a paper, repeat the whole script across seeds and
+report the spread, not just the point estimate.
+
 ---
 
 ## Cohort and protocol
@@ -162,6 +177,7 @@ and an external cohort before it is worth claiming.
 alf-neural-dynamics/
 ├── README.md                       this file
 ├── run_smoke.py                    end-to-end verification
+├── run_full.sh / summarize.py      full run (one seed) + merged results table
 ├── requirements.txt / config.example.yml / LICENSE / .gitignore
 ├── common/
 │   ├── data_io.py                  cohort loading, landmarking, competing risk
