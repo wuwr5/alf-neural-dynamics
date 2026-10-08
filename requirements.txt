@@ -1,0 +1,15 @@
+# Minimal, CPU-friendly. Everything runs on torch CPU out of the box.
+# Tested with: python 3.13, torch 2.14.1+cpu, numpy 2.3, pandas 2.3, scikit-learn 1.7
+
+torch>=2.0
+numpy>=1.24
+pandas>=2.0
+scikit-learn>=1.3        # only for the logistic-regression reference arm
+matplotlib>=3.7          # optional: component 3 plots
+
+# Optional. 02_latent_dynamics ships a self-contained RK4 solver, so this is
+# NOT required. Install it only if you want the adaptive dopri5 solver:
+# torchdiffeq>=0.2.3
+
+# Optional. Component 3 (FNO) is ~4x faster with cuFFT, but CPU FFT is fine
+# for the demo problem sizes.

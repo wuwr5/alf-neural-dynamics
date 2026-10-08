@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Data (never commit patient-level row data)
+data/*.csv
+data/*.parquet
+!data/README.md
+
+# Outputs
+outputs/
+results/
+runs/
+checkpoints/
+*.pt
+*.pth
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Notebooks
+.ipynb_checkpoints/

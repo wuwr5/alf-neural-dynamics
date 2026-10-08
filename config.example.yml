@@ -1,0 +1,49 @@
+# Copy to config.yml and edit. Every script also accepts the same values as
+# command-line flags; CLI wins over this file.
+
+data:
+  long_csv: data/jm_long.csv       # id, marker, time_d, valuenum, log_value
+  surv_csv: data/jm_surv.csv       # id, event_time_d, event, ...
+  out_dir: outputs
+
+cohort:
+  landmark_d: 2.0                  # main analysis landmark (t0 = ICU entry)
+  markers: [Bilirubin, INR, Creatinine]   # or: all_19
+  max_obs: 64                      # cap on time points per patient
+  transplant_as: censor            # censor | exclude
+  seed: 20261008
+  valid_frac: 0.25
+
+# ---- component 1: reversible lifting -------------------------------------
+reversible:
+  latent_dim: 32
+  n_blocks: 3
+  hidden: 64
+  pretrain_epochs: 60
+  pretrain_lr: 1.0e-3
+  finetune_epochs: 80
+  finetune_lr: 5.0e-4
+  freeze_encoder: false            # true = linear probe on frozen features
+
+# ---- component 2: latent dynamics ----------------------------------------
+latent_dynamics:
+  model: mtAN                      # latent_ode | gru_ode | mtAN
+  latent_dim: 32
+  hidden: 64
+  n_ref_points: 16                 # mTAN reference time points
+  solver: rk4                      # rk4 (built-in) | dopri5 (needs torchdiffeq)
+  solver_steps: 8
+  epochs: 120
+  lr: 1.0e-3
+  weight_decay: 1.0e-4
+
+# ---- component 3: spectral / FNO (waveforms only) ------------------------
+spectral:
+  n_train: 400
+  n_test: 100
+  signal_len: 256
+  modes: 16
+  width: 32
+  n_layers: 4
+  epochs: 60
+  lr: 1.0e-3
